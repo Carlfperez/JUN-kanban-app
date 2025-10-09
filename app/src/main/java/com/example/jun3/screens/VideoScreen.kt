@@ -1,11 +1,13 @@
 package com.example.jun3.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -13,6 +15,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import android.net.Uri
 import android.widget.MediaController
 import android.widget.VideoView
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,19 +24,24 @@ fun VideoScreen(
 ) {
     val context = LocalContext.current
     var videoView by remember { mutableStateOf<VideoView?>(null) }
+    var isPlaying by remember { mutableStateOf(true) }
+    var showControls by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Video Tutorial") },
+                title = { Text("🎬 Tutorial JUN KANBAN") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
             )
         }
     ) { innerPadding ->
@@ -41,83 +49,173 @@ fun VideoScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
         ) {
-            // Título del video
-            Text(
-                text = "Tutorial JUN KANBAN",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
-
             // REPRODUCTOR MEJORADO
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    .weight(1f)
+                    .padding(16.dp)
             ) {
-                AndroidView(
-                    factory = { androidContext -> // Cambié 'context' por 'androidContext'
-                        VideoView(androidContext).apply {
-                            videoView = this
+                Card(
+                    modifier = Modifier.fillMaxSize(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    AndroidView(
+                        factory = { androidContext ->
+                            VideoView(androidContext).apply {
+                                videoView = this
 
-                            // Configurar controles de video MEJORADO
-                            val mediaController = MediaController(androidContext)
-                            mediaController.setAnchorView(this)
-                            setMediaController(mediaController)
-                            mediaController.setMediaPlayer(this)
+                                // Configurar controles MEJORADOS
+                                val mediaController = MediaController(androidContext)
+                                mediaController.setAnchorView(this)
+                                setMediaController(mediaController)
+                                mediaController.setMediaPlayer(this)
 
-                            // CARGAR TU VIDEO
-                            val videoUri = Uri.parse("android.resource://${androidContext.packageName}/raw/jun_funcionamiento")
+                                // CARGAR VIDEO
+                                val videoUri = Uri.parse("android.resource://${androidContext.packageName}/raw/jun_funcionamiento")
+                                setVideoURI(videoUri)
 
-                            setVideoURI(videoUri)
+                                // Listeners para estado del video
+                                setOnPreparedListener { mp ->
+                                    mp.start()
+                                    mediaController.show(0)
+                                    isPlaying = true
+                                }
 
-                            // Listener para cuando el video está listo
-                            setOnPreparedListener { mp ->
-                                mp.start()
-                                mediaController.show(0) // Mostrar controles
+                                setOnTouchListener { _, _ ->
+                                    showControls = !showControls
+                                    true
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // CONTROLES PERSONALIZADOS - SOLO CON ICONOS BÁSICOS
+                    if (showControls) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.7f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Botón Retroceso 10s - CON TEXTO
+                                Button(
+                                    onClick = {
+                                        videoView?.apply {
+                                            seekTo(currentPosition - 10000)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                                ) {
+                                    Text("« 10s", color = Color.Black)
+                                }
+
+                                // Botón Play/Pause - CON TEXTO
+                                Button(
+                                    onClick = {
+                                        videoView?.apply {
+                                            if (isPlaying) {
+                                                pause()
+                                                isPlaying = false
+                                            } else {
+                                                start()
+                                                isPlaying = true
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                                    modifier = Modifier.size(64.dp)
+                                ) {
+                                    Text(if (isPlaying) "⏸️" else "▶️", color = Color.Black)
+                                }
+
+                                // Botón Avance 10s - CON TEXTO
+                                Button(
+                                    onClick = {
+                                        videoView?.apply {
+                                            seekTo(currentPosition + 10000)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                                ) {
+                                    Text("10s »", color = Color.Black)
+                                }
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            // BOTÓN REINICIAR FUNCIONAL
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Button(
-                    onClick = {
-                        videoView?.apply {
-                            seekTo(0) // Ir al inicio
-                            start()   // Reproducir
-                        }
                     }
-                ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Reiniciar")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Reiniciar Video")
                 }
             }
 
-            // Descripción
-            Text(
-                text = "Video demostrativo de todas las funciones de JUN KANBAN",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            // PANEL DE CONTROL MEJORADO
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Fila de controles principales
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    // Reiniciar
+                    Button(
+                        onClick = {
+                            videoView?.apply {
+                                seekTo(0)
+                                start()
+                                isPlaying = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("🔄 Reiniciar")
+                    }
 
-            // Instrucciones
-            Text(
-                text = "💡 Toca el video para ver controles de reproducción",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+                    // Mostrar/ocultar controles
+                    Button(
+                        onClick = {
+                            showControls = !showControls
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text("🎮 Controles")
+                    }
+                }
+
+                // Información del video
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "📱 Demo Completa de JUN KANBAN",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "• Gestión de tareas\n• Navegación entre pantallas\n• Interfaz moderna",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
         }
     }
 }
