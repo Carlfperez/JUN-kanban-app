@@ -3,59 +3,95 @@ package com.example.jun3.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.jun3.data.Task
+import com.example.jun3.data.TaskStatus
+import com.example.jun3.ui.state.TaskListUiState
+import com.example.jun3.ui.state.OperationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.example.jun3.data.Task
-import com.example.jun3.data.TaskStatus
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
-    val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
+    // Estado de la lista de tareas
+    private val _taskListState = MutableStateFlow<TaskListUiState>(TaskListUiState.Loading)
+    val taskListState: StateFlow<TaskListUiState> = _taskListState.asStateFlow()
+
+    // Estado de operaciones (agregar, actualizar, eliminar)
+    private val _operationState = MutableStateFlow<OperationState>(OperationState.Idle)
+    val operationState: StateFlow<OperationState> = _operationState.asStateFlow()
+
+    // Datos en memoria (temporal - luego reemplazaremos con Room)
+    private var tasks = mutableListOf(
+        Task(1, "Estudiar para el examen", "Repasar matemáticas y física", TaskStatus.TODO),
+        Task(2, "Hacer la compra", "Comprar frutas y verduras", TaskStatus.IN_PROGRESS),
+        Task(3, "Llamar al médico", "Pedir cita para chequeo", TaskStatus.DONE)
+    )
 
     init {
-        // Datos de ejemplo en memoria
-        _tasks.value = listOf(
-            Task(1, "Tarea 1", "Descripción 1", status = TaskStatus.TODO),
-            Task(2, "Tarea 2", "Descripción 2", status = TaskStatus.IN_PROGRESS),
-            Task(3, "Tarea 3", "Descripción 3", status = TaskStatus.DONE)
-        )
+        loadTasks()
+    }
+
+    private fun loadTasks() {
+        viewModelScope.launch {
+            try {
+                // Simular carga de datos
+                _taskListState.value = TaskListUiState.Success(tasks.toList())
+            } catch (e: Exception) {
+                _taskListState.value = TaskListUiState.Error("Error al cargar tareas: ${e.message}")
+            }
+        }
     }
 
     fun addTask(title: String, description: String = "") {
         viewModelScope.launch {
-            val currentTasks = _tasks.value.toMutableList()
-            val newId = (currentTasks.maxByOrNull { it.id }?.id ?: 0) + 1
-            val newTask = Task(
-                id = newId,
-                title = title,
-                description = description,
-                status = TaskStatus.TODO
-            )
-            currentTasks.add(newTask)
-            _tasks.value = currentTasks
-        }
-    }
-
-    fun removeTask(task: Task) {
-        viewModelScope.launch {
-            val currentTasks = _tasks.value.toMutableList()
-            currentTasks.remove(task)
-            _tasks.value = currentTasks
-        }
-    }
-
-    fun updateTaskStatus(task: Task, newStatus: TaskStatus) {
-        viewModelScope.launch {
-            val currentTasks = _tasks.value.toMutableList()
-            val index = currentTasks.indexOfFirst { it.id == task.id }
-            if (index != -1) {
-                val updatedTask = task.copy(status = newStatus)
-                currentTasks[index] = updatedTask
-                _tasks.value = currentTasks
+            _operationState.value = OperationState.Loading
+            try {
+                val newTask = Task(
+                    id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
+                    title = title,
+                    description = description,
+                    status = TaskStatus.TODO
+                )
+                tasks.add(newTask)
+                _taskListState.value = TaskListUiState.Success(tasks.toList())
+                _operationState.value = OperationState.Success("Tarea agregada correctamente")
+            } catch (e: Exception) {
+                _operationState.value = OperationState.Error("Error al agregar tarea: ${e.message}")
             }
         }
+    }
+
+    fun updateTaskStatus(taskId: Long, newStatus: TaskStatus) {
+        viewModelScope.launch {
+            try {
+                val taskIndex = tasks.indexOfFirst { it.id == taskId }
+                if (taskIndex != -1) {
+                    tasks[taskIndex] = tasks[taskIndex].copy(status = newStatus)
+                    _taskListState.value = TaskListUiState.Success(tasks.toList())
+                }
+            } catch (e: Exception) {
+                // Podríamos mostrar un error aquí si es necesario
+            }
+        }
+    }
+
+    fun deleteTask(taskId: Long) {
+        viewModelScope.launch {
+            _operationState.value = OperationState.Loading
+            try {
+                tasks.removeAll { it.id == taskId }
+                _taskListState.value = TaskListUiState.Success(tasks.toList())
+                _operationState.value = OperationState.Success("Tarea eliminada")
+            } catch (e: Exception) {
+                _operationState.value = OperationState.Error("Error al eliminar tarea: ${e.message}")
+            }
+        }
+    }
+
+    // Resetear estado de operación
+    fun resetOperationState() {
+        _operationState.value = OperationState.Idle
     }
 }

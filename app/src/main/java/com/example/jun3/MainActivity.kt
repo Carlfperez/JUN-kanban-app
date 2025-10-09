@@ -17,6 +17,8 @@ import com.example.jun3.navigation.Screen
 import com.example.jun3.ui.theme.JUN3Theme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.example.jun3.data.Task
+import com.example.jun3.data.TaskStatus
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,12 +69,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Data class para representar una tarea con estado
+/*
+// Data class para representar una tarea con estado - VERSIÓN ACTUALIZADA
 data class Task(
-    val id: Int,
+    val id: Long,  // Cambiado de Int a Long
     val title: String,
-    val status: TaskStatus
+    val description: String = "",  // Agregado
+    val status: TaskStatus  // Mantener
 )
+
+enum class TaskStatus {
+    TODO, IN_PROGRESS, DONE
+}
+*/
 
 enum class TaskStatus {
     TODO, IN_PROGRESS, DONE
@@ -140,9 +149,9 @@ fun TaskListScreen(onBack: () -> Unit) {
     var tasks by remember {
         mutableStateOf(
             listOf(
-                Task(1, "Estudiar para el examen", TaskStatus.TODO),
-                Task(2, "Hacer la compra", TaskStatus.IN_PROGRESS),
-                Task(3, "Llamar al médico", TaskStatus.DONE)
+                Task(1, "Estudiar para el examen", "Estudiar matemáticas", TaskStatus.TODO),
+                Task(2, "Hacer la compra", "Comprar frutas y verduras", TaskStatus.IN_PROGRESS),
+                Task(3, "Llamar al médico", "Pedir cita médica", TaskStatus.DONE)
             )
         )
     }
@@ -185,6 +194,7 @@ fun TaskListScreen(onBack: () -> Unit) {
                     val newTask = Task(
                         id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
                         title = taskText,
+                        description = "",  // Agregar description vacío
                         status = TaskStatus.TODO
                     )
                     tasks = tasks + newTask
