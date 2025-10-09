@@ -17,52 +17,64 @@ import com.example.jun3.navigation.Screen
 import com.example.jun3.ui.theme.JUN3Theme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
+import com.example.jun3.screens.VideoScreen
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import com.example.jun3.screens.AboutScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            JUN3Theme {
-                // Navigation setup
-                val navController = rememberNavController()
-
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Home.route
+            // Usamos MaterialTheme en lugar de JunKanbanTheme
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    composable(Screen.Home.route) {
-                        HomeScreen(
-                            onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
-                            onNavigateToAbout = { navController.navigate(Screen.About.route) }
-                        )
-                    }
+                    val navController = rememberNavController()
 
-                    composable(Screen.TaskList.route) {
-                        TaskListScreen(
-                            onBack = { navController.popBackStack() }
-                        )
-                    }
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Home.route
+                    ) {
+                        composable(Screen.Home.route) {
+                            HomeScreen(
+                                onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
+                                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                            )
+                        }
 
-                    composable(Screen.AddTask.route) {
-                        // Temporalmente
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp)
-                        ) {
-                            Text("Pantalla Agregar Tarea - En construcción")
-                            Button(onClick = { navController.popBackStack() }) {
-                                Text("Volver")
+                        composable(Screen.TaskList.route) {
+                            TaskListScreen(
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable(Screen.AddTask.route) {
+                            // Temporalmente
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp)
+                            ) {
+                                Text("Pantalla Agregar Tarea - En construcción")
+                                Button(onClick = { navController.popBackStack() }) {
+                                    Text("Volver")
+                                }
                             }
                         }
-                    }
 
-                    composable(Screen.About.route) {
-                        AboutScreen(
-                            onBack = { navController.popBackStack() }
-                        )
+                        composable(Screen.About.route) {
+                            AboutScreen(
+                                onBack = { navController.popBackStack() }, // ← COMA AGREGADA AQUÍ
+                                navController = navController
+                            )
+                        }
+
+                        composable(Screen.VideoPlayer.route) {
+                            VideoScreen(
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
