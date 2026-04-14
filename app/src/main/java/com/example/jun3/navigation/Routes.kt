@@ -5,4 +5,5 @@ sealed class Screen(val route: String) {
     object TaskList : Screen("task_list")
     object AddTask : Screen("add_task")
     object About : Screen("about")
+    object VideoPlayer : Screen("video_player")  // ← NUEVA RUTA
 }

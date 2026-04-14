@@ -17,51 +17,69 @@ import com.example.jun3.navigation.Screen
 import com.example.jun3.ui.theme.JUN3Theme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+<<<<<<< HEAD
 import com.example.jun3.data.Task
 import com.example.jun3.data.TaskStatus
+=======
+import com.example.jun3.screens.VideoScreen
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import com.example.jun3.screens.AboutScreen
+>>>>>>> feature/emojis-kanban
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            JUN3Theme {
-                // Navigation setup
-                val navController = rememberNavController()
-
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Home.route
+            // Usamos MaterialTheme en lugar de JunKanbanTheme
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    composable(Screen.Home.route) {
-                        HomeScreen(
-                            onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
-                            onNavigateToAbout = { navController.navigate(Screen.About.route) }
-                        )
-                    }
+                    val navController = rememberNavController()
 
-                    composable(Screen.TaskList.route) {
-                        TaskListScreen(
-                            onBack = { navController.popBackStack() }
-                        )
-                    }
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Home.route
+                    ) {
+                        composable(Screen.Home.route) {
+                            HomeScreen(
+                                onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
+                                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                            )
+                        }
 
-                    composable(Screen.AddTask.route) {
-                        // Temporalmente
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp)
-                        ) {
-                            Text("Pantalla Agregar Tarea - En construcción")
-                            Button(onClick = { navController.popBackStack() }) {
-                                Text("Volver")
+                        composable(Screen.TaskList.route) {
+                            TaskListScreen(
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable(Screen.AddTask.route) {
+                            // Temporalmente
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp)
+                            ) {
+                                Text("Pantalla Agregar Tarea - En construcción")
+                                Button(onClick = { navController.popBackStack() }) {
+                                    Text("Volver")
+                                }
                             }
                         }
-                    }
 
-                    composable(Screen.About.route) {
-                        AboutScreen(
-                            onBack = { navController.popBackStack() }
-                        )
+                        composable(Screen.About.route) {
+                            AboutScreen(
+                                onBack = { navController.popBackStack() }, // ← COMA AGREGADA AQUÍ
+                                navController = navController
+                            )
+                        }
+
+                        composable(Screen.VideoPlayer.route) {
+                            VideoScreen(
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
@@ -359,12 +377,39 @@ fun KanbanTaskCard(
             .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Text(
-            text = task.title,
+        Row(
             modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Emoji en lugar de icono (más simple y funciona)
+            TaskIcon(taskTitle = task.title)
+
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
+}
+// Función simplificada - usaremos emojis como texto
+@Composable
+fun TaskIcon(taskTitle: String) {
+    val emoji = when {
+        taskTitle.contains("estudiar", ignoreCase = true) -> "📚"
+        taskTitle.contains("compr", ignoreCase = true) -> "🛒"
+        taskTitle.contains("médic", ignoreCase = true) -> "🏥"
+        taskTitle.contains("llamar", ignoreCase = true) -> "📞"
+        taskTitle.contains("trabaj", ignoreCase = true) -> "💼"
+        else -> "📝"
+    }
+
+    Text(
+        text = emoji,
+        modifier = Modifier
+            .size(24.dp)
+            .padding(end = 8.dp)
+    )
 }
 
 // Pantalla Acerca de
