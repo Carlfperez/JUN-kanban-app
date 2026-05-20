@@ -16,4 +16,5 @@ Clona el repositorio
 Abre en Android Studio
 Ejecuta en un emulador o dispositivo físico
 📝 Estado del proyecto
-🚧 En desarrollo - Próximas features:
+🚧 Proximas actualizaciones pronto
+
