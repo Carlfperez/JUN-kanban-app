@@ -17,15 +17,15 @@ import com.example.jun3.navigation.Screen
 import com.example.jun3.ui.theme.JUN3Theme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-<<<<<<< HEAD
+
 import com.example.jun3.data.Task
 import com.example.jun3.data.TaskStatus
-=======
+
 import com.example.jun3.screens.VideoScreen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import com.example.jun3.screens.AboutScreen
->>>>>>> feature/emojis-kanban
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
