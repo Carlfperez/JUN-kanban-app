@@ -4,33 +4,33 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.jun3.navigation.Screen
-import com.example.jun3.ui.theme.JUN3Theme
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-
+import androidx.navigation.navArgument
 import com.example.jun3.data.Task
 import com.example.jun3.data.TaskStatus
-
-import com.example.jun3.screens.VideoScreen
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import com.example.jun3.navigation.Screen
 import com.example.jun3.screens.AboutScreen
+import com.example.jun3.screens.FocusScreen
+import com.example.jun3.screens.VideoScreen
+import com.example.jun3.ui.theme.JUN3Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Usamos MaterialTheme en lugar de JunKanbanTheme
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
@@ -50,12 +50,12 @@ class MainActivity : ComponentActivity() {
 
                         composable(Screen.TaskList.route) {
                             TaskListScreen(
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                navController = navController
                             )
                         }
 
                         composable(Screen.AddTask.route) {
-                            // Temporalmente
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
 
                         composable(Screen.About.route) {
                             AboutScreen(
-                                onBack = { navController.popBackStack() }, // ← COMA AGREGADA AQUÍ
+                                onBack = { navController.popBackStack() },
                                 navController = navController
                             )
                         }
@@ -80,32 +80,43 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() }
                             )
                         }
+
+                        // Pantalla de Enfoque
+                        composable(
+                            route = "focus/{taskId}",
+                            arguments = listOf(navArgument("taskId") { defaultValue = 0L })
+                        ) { backStackEntry ->
+                            val taskId = backStackEntry.arguments?.getLong("taskId") ?: 0L
+                            val task = getTaskById(taskId)
+
+                            FocusScreen(
+                                task = task,
+                                onBack = { navController.popBackStack() },
+                                onComplete = {
+                                    // TODO: Marcar tarea como completada
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
+    // Función temporal para obtener tarea por ID
+    private fun getTaskById(taskId: Long): Task {
+        return Task(
+            id = taskId,
+            title = "Tarea de ejemplo",
+            description = "Descripción de la tarea",
+            status = TaskStatus.IN_PROGRESS
+        )
+    }
 }
 
-/*
-// Data class para representar una tarea con estado - VERSIÓN ACTUALIZADA
-data class Task(
-    val id: Long,  // Cambiado de Int a Long
-    val title: String,
-    val description: String = "",  // Agregado
-    val status: TaskStatus  // Mantener
-)
+// ==================== PANTALLA DE INICIO ====================
 
-enum class TaskStatus {
-    TODO, IN_PROGRESS, DONE
-}
-*/
-
-enum class TaskStatus {
-    TODO, IN_PROGRESS, DONE
-}
-
-// Pantalla de Inicio
 @Composable
 fun HomeScreen(
     onNavigateToTasks: () -> Unit,
@@ -137,7 +148,6 @@ fun HomeScreen(
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        // Botón para ir a Tareas
         Button(
             onClick = onNavigateToTasks,
             modifier = Modifier
@@ -147,7 +157,6 @@ fun HomeScreen(
             Text("Mis Tareas")
         }
 
-        // Botón para ir a Acerca de
         OutlinedButton(
             onClick = onNavigateToAbout,
             modifier = Modifier
@@ -159,10 +168,14 @@ fun HomeScreen(
     }
 }
 
-// TaskListScreen con sistema Kanban
+// ==================== TABLERO KANBAN ====================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskListScreen(onBack: () -> Unit) {
+fun TaskListScreen(
+    onBack: () -> Unit,
+    navController: NavController
+) {
     var taskText by remember { mutableStateOf("") }
     var tasks by remember {
         mutableStateOf(
@@ -179,7 +192,6 @@ fun TaskListScreen(onBack: () -> Unit) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Botón para volver atrás
         Button(
             onClick = onBack,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -193,26 +205,22 @@ fun TaskListScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // TextField para nueva tarea
         TextField(
             value = taskText,
-            onValueChange = { newText ->
-                taskText = newText
-            },
+            onValueChange = { newText -> taskText = newText },
             label = { Text("Nueva tarea...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
 
-        // Botón para agregar tarea
         Button(
             onClick = {
                 if (taskText.isNotBlank()) {
                     val newTask = Task(
                         id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
                         title = taskText,
-                        description = "",  // Agregar description vacío
+                        description = "",
                         status = TaskStatus.TODO
                     )
                     tasks = tasks + newTask
@@ -226,59 +234,56 @@ fun TaskListScreen(onBack: () -> Unit) {
             Text("Agregar Tarea a 'Por Hacer'")
         }
 
-        // Las 3 columnas Kanban
         Row(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            // Columna 1: Por Hacer
             KanbanColumn(
                 title = "Por Hacer",
                 taskCount = tasks.count { it.status == TaskStatus.TODO },
                 tasks = tasks.filter { it.status == TaskStatus.TODO },
                 onTaskClick = { task ->
-                    // Mover a En Progreso
                     tasks = tasks.map {
                         if (it.id == task.id) it.copy(status = TaskStatus.IN_PROGRESS)
                         else it
                     }
                 },
+                onFocusClick = { /* No aplica */ },
                 modifier = Modifier.weight(1f),
                 columnColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
-            // Columna 2: En Progreso
             KanbanColumn(
                 title = "En Progreso",
                 taskCount = tasks.count { it.status == TaskStatus.IN_PROGRESS },
                 tasks = tasks.filter { it.status == TaskStatus.IN_PROGRESS },
                 onTaskClick = { task ->
-                    // Mover a Completadas
                     tasks = tasks.map {
                         if (it.id == task.id) it.copy(status = TaskStatus.DONE)
                         else it
                     }
                 },
+                onFocusClick = { task ->
+                    navController.navigate("focus/${task.id}")
+                },
                 modifier = Modifier.weight(1f),
                 columnColor = MaterialTheme.colorScheme.primaryContainer
             )
 
-            // Columna 3: Completadas
             KanbanColumn(
                 title = "Completadas",
                 taskCount = tasks.count { it.status == TaskStatus.DONE },
                 tasks = tasks.filter { it.status == TaskStatus.DONE },
                 onTaskClick = { task ->
-                    // Eliminar tarea
                     tasks = tasks.filter { it.id != task.id }
                 },
+                onFocusClick = { /* No aplica */ },
                 modifier = Modifier.weight(1f),
                 columnColor = MaterialTheme.colorScheme.secondaryContainer
             )
         }
 
-        // Contador total de tareas
         Text(
             text = "Total de tareas: ${tasks.size}",
             style = MaterialTheme.typography.bodySmall,
@@ -288,7 +293,8 @@ fun TaskListScreen(onBack: () -> Unit) {
     }
 }
 
-// Composable para cada columna Kanban
+// ==================== COLUMNA KANBAN ====================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KanbanColumn(
@@ -296,6 +302,7 @@ fun KanbanColumn(
     taskCount: Int,
     tasks: List<Task>,
     onTaskClick: (Task) -> Unit,
+    onFocusClick: (Task) -> Unit,
     modifier: Modifier = Modifier,
     columnColor: androidx.compose.ui.graphics.Color
 ) {
@@ -303,7 +310,6 @@ fun KanbanColumn(
         modifier = modifier
             .padding(4.dp)
     ) {
-        // Header de la columna
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -328,7 +334,6 @@ fun KanbanColumn(
             }
         }
 
-        // Lista de tareas en la columna
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -338,11 +343,11 @@ fun KanbanColumn(
                 KanbanTaskCard(
                     task = task,
                     onTaskClick = { onTaskClick(task) },
+                    onFocusClick = { onFocusClick(task) },
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
 
-            // Espacio vacío si no hay tareas
             if (tasks.isEmpty()) {
                 item {
                     Box(
@@ -363,12 +368,14 @@ fun KanbanColumn(
     }
 }
 
-// Composable para cada tarjeta de tarea
+// ==================== TARJETA DE TAREA ====================
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KanbanTaskCard(
     task: Task,
     onTaskClick: () -> Unit,
+    onFocusClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -381,7 +388,6 @@ fun KanbanTaskCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Emoji en lugar de icono (más simple y funciona)
             TaskIcon(taskTitle = task.title)
 
             Text(
@@ -389,10 +395,25 @@ fun KanbanTaskCard(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f)
             )
+
+            if (task.status == TaskStatus.IN_PROGRESS) {
+                IconButton(
+                    onClick = onFocusClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "Iniciar enfoque",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }
-// Función simplificada - usaremos emojis como texto
+
+// ==================== ICONO DE TAREA ====================
+
 @Composable
 fun TaskIcon(taskTitle: String) {
     val emoji = when {
@@ -412,7 +433,8 @@ fun TaskIcon(taskTitle: String) {
     )
 }
 
-// Pantalla Acerca de
+// ==================== ACERCA DE ====================
+
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     Column(
@@ -420,7 +442,6 @@ fun AboutScreen(onBack: () -> Unit) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Botón para volver atrás
         Button(
             onClick = onBack,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -478,7 +499,8 @@ fun AboutScreen(onBack: () -> Unit) {
     }
 }
 
-// Previsualizaciones
+// ==================== PREVIEWS ====================
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewHomeScreen() {
@@ -494,7 +516,11 @@ fun PreviewHomeScreen() {
 @Composable
 fun PreviewTaskListScreen() {
     JUN3Theme {
-        TaskListScreen(onBack = { })
+        val dummyNavController = rememberNavController()
+        TaskListScreen(
+            onBack = { },
+            navController = dummyNavController
+        )
     }
 }
 
@@ -505,4 +531,3 @@ fun PreviewAboutScreen() {
         AboutScreen(onBack = { })
     }
 }
-// timestamp: 2026-05-20 18:35:35

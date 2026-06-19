@@ -1,4 +1,4 @@
-JUN - Organizador de Tareas
+ JUN - Organizador de Tareas
 Una aplicación Kanban moderna para gestionar tus tareas diarias, desarrollada en Jetpack Compose.
 
 ✨ Características
