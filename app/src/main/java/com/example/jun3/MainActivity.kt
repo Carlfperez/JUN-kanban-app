@@ -3,6 +3,7 @@ package com.example.jun3
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,10 +28,20 @@ import com.example.jun3.screens.AboutScreen
 import com.example.jun3.screens.FocusScreen
 import com.example.jun3.screens.VideoScreen
 import com.example.jun3.ui.theme.JUN3Theme
+import com.example.jun3.viewmodel.FocusViewModel
+import com.example.jun3.viewmodel.TaskListViewModel
 
 class MainActivity : ComponentActivity() {
+    // ✅ ViewModel compartido para la lista de tareas
+    private val taskListViewModel: TaskListViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val intent = intent
+        if (intent.getBooleanExtra("focus_reminder", false)) {
+            // La app se abrió desde la notificación
+            // Podrías navegar a la pantalla de enfoque o mostrar un mensaje
+        }
         setContent {
             MaterialTheme {
                 Surface(
@@ -51,7 +63,8 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.TaskList.route) {
                             TaskListScreen(
                                 onBack = { navController.popBackStack() },
-                                navController = navController
+                                navController = navController,
+                                viewModel = taskListViewModel
                             )
                         }
 
@@ -81,37 +94,45 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // Pantalla de Enfoque
+                        // ✅ Pantalla de Enfoque CORREGIDA
                         composable(
                             route = "focus/{taskId}",
                             arguments = listOf(navArgument("taskId") { defaultValue = 0L })
                         ) { backStackEntry ->
                             val taskId = backStackEntry.arguments?.getLong("taskId") ?: 0L
-                            val task = getTaskById(taskId)
+                            val task = taskListViewModel.getTaskById(taskId)
 
-                            FocusScreen(
-                                task = task,
-                                onBack = { navController.popBackStack() },
-                                onComplete = {
-                                    // TODO: Marcar tarea como completada
-                                    navController.popBackStack()
+                            if (task == null) {
+                                // Si no se encuentra, mostrar error o volver
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Tarea no encontrada", color = MaterialTheme.colorScheme.error)
                                 }
-                            )
+                            } else {
+                                val focusViewModel: FocusViewModel = viewModel(
+                                    factory = FocusViewModel.provideFactory(application)
+                                )
+
+                                FocusScreen(
+                                    task = task,
+                                    onBack = { navController.popBackStack() },
+                                    onComplete = {
+                                        // Marcar tarea como completada en el ViewModel
+                                        taskListViewModel.updateTask(
+                                            task.copy(status = TaskStatus.DONE)
+                                        )
+                                        navController.popBackStack()
+                                    },
+                                    focusViewModel = focusViewModel
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-    }
-
-    // Función temporal para obtener tarea por ID
-    private fun getTaskById(taskId: Long): Task {
-        return Task(
-            id = taskId,
-            title = "Tarea de ejemplo",
-            description = "Descripción de la tarea",
-            status = TaskStatus.IN_PROGRESS
-        )
     }
 }
 
@@ -168,24 +189,17 @@ fun HomeScreen(
     }
 }
 
-// ==================== TABLERO KANBAN ====================
+// ==================== TABLERO KANBAN (CORREGIDO) ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskListScreen(
     onBack: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    viewModel: TaskListViewModel
 ) {
+    val tasks by viewModel.tasks.collectAsState()
     var taskText by remember { mutableStateOf("") }
-    var tasks by remember {
-        mutableStateOf(
-            listOf(
-                Task(1, "Estudiar para el examen", "Estudiar matemáticas", TaskStatus.TODO),
-                Task(2, "Hacer la compra", "Comprar frutas y verduras", TaskStatus.IN_PROGRESS),
-                Task(3, "Llamar al médico", "Pedir cita médica", TaskStatus.DONE)
-            )
-        )
-    }
 
     Column(
         modifier = Modifier
@@ -217,13 +231,7 @@ fun TaskListScreen(
         Button(
             onClick = {
                 if (taskText.isNotBlank()) {
-                    val newTask = Task(
-                        id = (tasks.maxOfOrNull { it.id } ?: 0) + 1,
-                        title = taskText,
-                        description = "",
-                        status = TaskStatus.TODO
-                    )
-                    tasks = tasks + newTask
+                    viewModel.addTask(taskText)
                     taskText = ""
                 }
             },
@@ -244,10 +252,7 @@ fun TaskListScreen(
                 taskCount = tasks.count { it.status == TaskStatus.TODO },
                 tasks = tasks.filter { it.status == TaskStatus.TODO },
                 onTaskClick = { task ->
-                    tasks = tasks.map {
-                        if (it.id == task.id) it.copy(status = TaskStatus.IN_PROGRESS)
-                        else it
-                    }
+                    viewModel.updateTask(task.copy(status = TaskStatus.IN_PROGRESS))
                 },
                 onFocusClick = { /* No aplica */ },
                 modifier = Modifier.weight(1f),
@@ -259,10 +264,7 @@ fun TaskListScreen(
                 taskCount = tasks.count { it.status == TaskStatus.IN_PROGRESS },
                 tasks = tasks.filter { it.status == TaskStatus.IN_PROGRESS },
                 onTaskClick = { task ->
-                    tasks = tasks.map {
-                        if (it.id == task.id) it.copy(status = TaskStatus.DONE)
-                        else it
-                    }
+                    viewModel.updateTask(task.copy(status = TaskStatus.DONE))
                 },
                 onFocusClick = { task ->
                     navController.navigate("focus/${task.id}")
@@ -276,7 +278,7 @@ fun TaskListScreen(
                 taskCount = tasks.count { it.status == TaskStatus.DONE },
                 tasks = tasks.filter { it.status == TaskStatus.DONE },
                 onTaskClick = { task ->
-                    tasks = tasks.filter { it.id != task.id }
+                    viewModel.deleteTask(task.id)
                 },
                 onFocusClick = { /* No aplica */ },
                 modifier = Modifier.weight(1f),
@@ -516,10 +518,12 @@ fun PreviewHomeScreen() {
 @Composable
 fun PreviewTaskListScreen() {
     JUN3Theme {
-        val dummyNavController = rememberNavController()
+        // Para el preview, creamos un ViewModel dummy
+        val dummyViewModel = TaskListViewModel()
         TaskListScreen(
             onBack = { },
-            navController = dummyNavController
+            navController = rememberNavController(),
+            viewModel = dummyViewModel
         )
     }
 }

@@ -222,6 +222,7 @@ fun FocusScreen(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
+                        // Columna 1: Tiempo (sin cambios)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = focusViewModel.formatTime(uiState.elapsedSeconds),
@@ -235,15 +236,23 @@ fun FocusScreen(
                             )
                         }
 
+                        // Columna 2: Estado (CORREGIDO)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val estadoTexto = when {
+                                !uiState.isActive -> "Inactivo"
+                                uiState.isPaused -> "Pausado"
+                                else -> "Activo"
+                            }
+                            val estadoColor = when {
+                                !uiState.isActive -> Color(0xFFD32F2F)   // Rojo
+                                uiState.isPaused -> Color(0xFFFF9800)    // Naranja
+                                else -> Color(0xFF4CAF50)                // Verde
+                            }
                             Text(
-                                text = if (uiState.isActive) "Activo" else "Inactivo",
+                                text = estadoTexto,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleLarge,
-                                color = if (uiState.isActive)
-                                    Color(0xFF4CAF50)
-                                else
-                                    Color(0xFFD32F2F)
+                                color = estadoColor
                             )
                             Text(
                                 text = "Estado",
