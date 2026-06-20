@@ -1,7 +1,6 @@
 package com.example.jun3.viewmodel
 
 import android.app.Application
-import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -14,6 +13,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.jun3.data.Task
+import com.example.jun3.utils.PreferenceHelper
 import com.example.jun3.workers.FocusReminderWorker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,22 +27,21 @@ class FocusViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
+    private val prefs = PreferenceHelper(application)
     private val _uiState = MutableStateFlow(FocusUiState())
     val uiState: StateFlow<FocusUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
     private var currentTaskId: Long = 0
 
-    // ✅ Observador del ciclo de vida de la app (CORREGIDO)
+    // Observador del ciclo de vida de la app
     init {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    // La app pasa a segundo plano → programar recordatorio
                     scheduleFocusReminder()
                 }
                 Lifecycle.Event.ON_RESUME -> {
-                    // La app vuelve a primer plano → cancelar recordatorio
                     cancelFocusReminder()
                 }
                 else -> { /* No hacer nada */ }
@@ -95,13 +94,18 @@ class FocusViewModel(
     fun stopFocusSession() {
         timerJob?.cancel()
         timerJob = null
-        _uiState.value = FocusUiState()
 
-        // Cancelar cualquier notificación pendiente
+        val currentState = _uiState.value
+        if (currentState.isActive && currentState.currentTask != null) {
+            //  Guardar el tiempo enfocado en SharedPreferences
+            prefs.saveFocusTime(currentState.elapsedSeconds)
+            // room despues
+        }
+
+        _uiState.value = FocusUiState()
         cancelFocusReminder()
     }
 
-    // Programar la notificación de recordatorio
     private fun scheduleFocusReminder() {
         val currentState = _uiState.value
         if (!currentState.isActive || currentState.currentTask == null) return
@@ -123,7 +127,6 @@ class FocusViewModel(
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
     }
 
-    // ✅ Cancelar todas las notificaciones programadas (incluye la que estaba pendiente)
     private fun cancelFocusReminder() {
         WorkManager.getInstance(getApplication()).cancelAllWork()
         val notificationHelper = com.example.jun3.notifications.NotificationHelper(getApplication())

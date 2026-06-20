@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight  // ✅ IMPORTACIÓN AGREGADA
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,11 +30,12 @@ import com.example.jun3.screens.AboutScreen
 import com.example.jun3.screens.FocusScreen
 import com.example.jun3.screens.VideoScreen
 import com.example.jun3.ui.theme.JUN3Theme
+import com.example.jun3.utils.PreferenceHelper
 import com.example.jun3.viewmodel.FocusViewModel
 import com.example.jun3.viewmodel.TaskListViewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
-    // ✅ ViewModel compartido para la lista de tareas
     private val taskListViewModel: TaskListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,9 +43,22 @@ class MainActivity : ComponentActivity() {
         val intent = intent
         if (intent.getBooleanExtra("focus_reminder", false)) {
             // La app se abrió desde la notificación
-            // Podrías navegar a la pantalla de enfoque o mostrar un mensaje
         }
         setContent {
+            // ✅ Usar LocalContext en lugar de applicationContext
+            val context = LocalContext.current
+            val prefs = remember { PreferenceHelper(context) }
+            var todayFocusTime by remember { mutableStateOf("0s") }
+
+            // Actualizar el tiempo cada 5 segundos
+            LaunchedEffect(Unit) {
+                while (true) {
+                    val seconds = prefs.getTodayFocusTime()
+                    todayFocusTime = prefs.formatTime(seconds)
+                    delay(5000)
+                }
+            }
+
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
@@ -56,7 +72,8 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Home.route) {
                             HomeScreen(
                                 onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
-                                onNavigateToAbout = { navController.navigate(Screen.About.route) }
+                                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                                todayFocusTime = todayFocusTime
                             )
                         }
 
@@ -94,7 +111,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ✅ Pantalla de Enfoque CORREGIDA
+                        // Pantalla de Enfoque
                         composable(
                             route = "focus/{taskId}",
                             arguments = listOf(navArgument("taskId") { defaultValue = 0L })
@@ -103,7 +120,6 @@ class MainActivity : ComponentActivity() {
                             val task = taskListViewModel.getTaskById(taskId)
 
                             if (task == null) {
-                                // Si no se encuentra, mostrar error o volver
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
@@ -119,7 +135,6 @@ class MainActivity : ComponentActivity() {
                                     task = task,
                                     onBack = { navController.popBackStack() },
                                     onComplete = {
-                                        // Marcar tarea como completada en el ViewModel
                                         taskListViewModel.updateTask(
                                             task.copy(status = TaskStatus.DONE)
                                         )
@@ -141,7 +156,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(
     onNavigateToTasks: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    todayFocusTime: String
 ) {
     Column(
         modifier = Modifier
@@ -169,6 +185,35 @@ fun HomeScreen(
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
+        // ⭐ Mostrar tiempo enfocado hoy
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "⏱️ Tiempo enfocado hoy",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = todayFocusTime,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,  // ✅ AHORA FUNCIONA
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
         Button(
             onClick = onNavigateToTasks,
             modifier = Modifier
@@ -189,7 +234,7 @@ fun HomeScreen(
     }
 }
 
-// ==================== TABLERO KANBAN (CORREGIDO) ====================
+// ==================== TABLERO KANBAN ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -509,7 +554,8 @@ fun PreviewHomeScreen() {
     JUN3Theme {
         HomeScreen(
             onNavigateToTasks = { },
-            onNavigateToAbout = { }
+            onNavigateToAbout = { },
+            todayFocusTime = "1h 23m"
         )
     }
 }
@@ -518,7 +564,6 @@ fun PreviewHomeScreen() {
 @Composable
 fun PreviewTaskListScreen() {
     JUN3Theme {
-        // Para el preview, creamos un ViewModel dummy
         val dummyViewModel = TaskListViewModel()
         TaskListScreen(
             onBack = { },
