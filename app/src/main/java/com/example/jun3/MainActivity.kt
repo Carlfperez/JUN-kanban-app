@@ -1,5 +1,6 @@
 package com.example.jun3
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -37,7 +40,11 @@ import com.example.jun3.viewmodel.TaskListViewModel
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
-    private val taskListViewModel: TaskListViewModel by viewModels()
+
+    // ✅ ViewModel con Application (Factory)
+    private val taskListViewModel: TaskListViewModel by viewModels {
+        TaskListViewModelFactory(application)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,7 +119,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ✅ NUEVA RUTA: Pantalla de Ajustes
                         composable(Screen.Settings.route) {
                             SettingsScreen(
                                 onBack = { navController.popBackStack() },
@@ -126,14 +132,22 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(navArgument("taskId") { defaultValue = 0L })
                         ) { backStackEntry ->
                             val taskId = backStackEntry.arguments?.getLong("taskId") ?: 0L
-                            val task = taskListViewModel.getTaskById(taskId)
+                            // Obtener la tarea desde Room (suspend)
+                            var task by remember { mutableStateOf<Task?>(null) }
+                            var isLoading by remember { mutableStateOf(true) }
 
-                            if (task == null) {
+                            LaunchedEffect(taskId) {
+                                isLoading = true
+                                task = taskListViewModel.getTaskById(taskId)
+                                isLoading = false
+                            }
+
+                            if (isLoading || task == null) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Tarea no encontrada", color = MaterialTheme.colorScheme.error)
+                                    CircularProgressIndicator()
                                 }
                             } else {
                                 val focusViewModel: FocusViewModel = viewModel(
@@ -141,11 +155,11 @@ class MainActivity : ComponentActivity() {
                                 )
 
                                 FocusScreen(
-                                    task = task,
+                                    task = task!!,
                                     onBack = { navController.popBackStack() },
                                     onComplete = {
                                         taskListViewModel.updateTask(
-                                            task.copy(status = TaskStatus.DONE)
+                                            task!!.copy(status = TaskStatus.DONE)
                                         )
                                         navController.popBackStack()
                                     },
@@ -160,13 +174,25 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ==================== PANTALLA DE INICIO (ACTUALIZADA CON BOTÓN AJUSTES) ====================
+// ==================== FACTORY PARA TASKLISTVIEWMODEL ====================
+
+class TaskListViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(TaskListViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return TaskListViewModel(application) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+// ==================== PANTALLA DE INICIO ====================
 
 @Composable
 fun HomeScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToAbout: () -> Unit,
-    onNavigateToSettings: () -> Unit,  // ← NUEVO PARÁMETRO
+    onNavigateToSettings: () -> Unit,
     todayFocusTime: String
 ) {
     Column(
@@ -224,7 +250,6 @@ fun HomeScreen(
             }
         }
 
-        // Botones principales
         Button(
             onClick = onNavigateToTasks,
             modifier = Modifier
@@ -235,7 +260,7 @@ fun HomeScreen(
         }
 
         OutlinedButton(
-            onClick = onNavigateToSettings,  // ← NUEVO BOTÓN
+            onClick = onNavigateToSettings,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
@@ -585,7 +610,8 @@ fun PreviewHomeScreen() {
 @Composable
 fun PreviewTaskListScreen() {
     JUN3Theme {
-        val dummyViewModel = TaskListViewModel()
+        // Para preview, usamos un ViewModel dummy (no persistente)
+        val dummyViewModel = TaskListViewModel(androidx.compose.ui.platform.LocalContext.current.applicationContext as Application)
         TaskListScreen(
             onBack = { },
             navController = rememberNavController(),
