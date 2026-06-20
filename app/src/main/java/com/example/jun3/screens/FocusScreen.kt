@@ -5,17 +5,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jun3.data.Task
+import com.example.jun3.utils.PreferenceHelper
 import com.example.jun3.viewmodel.FocusViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +27,10 @@ fun FocusScreen(
     onComplete: () -> Unit,
     focusViewModel: FocusViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val prefs = remember { PreferenceHelper(context) }
+    val nudgeDelay = prefs.getNudgeDelay() // Leer tiempo configurado
+
     val uiState by focusViewModel.uiState.collectAsState()
 
     // Iniciar la sesión de enfoque al entrar
@@ -81,7 +86,6 @@ fun FocusScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Icono de estado
                     Icon(
                         imageVector = if (uiState.isActive && !uiState.isPaused)
                             Icons.Default.PlayArrow
@@ -119,28 +123,42 @@ fun FocusScreen(
                     }
                 }
 
-                // Temporizador
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .background(
-                            if (uiState.isActive && !uiState.isPaused)
-                                Color(0xFF4CAF50).copy(alpha = 0.1f)
-                            else
-                                Color(0xFFFF9800).copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(100.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                // Temporizador + indicador de recordatorio
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = focusViewModel.formatTime(uiState.elapsedSeconds),
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (uiState.isActive && !uiState.isPaused)
-                            Color(0xFF4CAF50)
-                        else
-                            Color(0xFFFF9800)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(200.dp)
+                            .background(
+                                if (uiState.isActive && !uiState.isPaused)
+                                    Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                else
+                                    Color(0xFFFF9800).copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(100.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = focusViewModel.formatTime(uiState.elapsedSeconds),
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (uiState.isActive && !uiState.isPaused)
+                                Color(0xFF4CAF50)
+                            else
+                                Color(0xFFFF9800)
+                        )
+                    }
+
+                    // ✅ INDICADOR DEL TIEMPO DE ESPERA (NUDGE)
+                    if (uiState.isActive) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "⏳ Recordatorio en $nudgeDelay minuto${if (nudgeDelay > 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
 
                 // Controles
@@ -153,7 +171,6 @@ fun FocusScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Botón Pausa/Reanudar
                         Button(
                             onClick = { focusViewModel.togglePause() },
                             modifier = Modifier.weight(1f),
@@ -175,7 +192,6 @@ fun FocusScreen(
                             Text(if (uiState.isPaused) "Reanudar" else "Pausar")
                         }
 
-                        // Botón Completar
                         Button(
                             onClick = {
                                 focusViewModel.stopFocusSession()
@@ -192,7 +208,6 @@ fun FocusScreen(
                         }
                     }
 
-                    // Botón Detener
                     OutlinedButton(
                         onClick = {
                             focusViewModel.stopFocusSession()
@@ -222,7 +237,6 @@ fun FocusScreen(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Columna 1: Tiempo (sin cambios)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = focusViewModel.formatTime(uiState.elapsedSeconds),
@@ -236,7 +250,6 @@ fun FocusScreen(
                             )
                         }
 
-                        // Columna 2: Estado (CORREGIDO)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             val estadoTexto = when {
                                 !uiState.isActive -> "Inactivo"
@@ -244,9 +257,9 @@ fun FocusScreen(
                                 else -> "Activo"
                             }
                             val estadoColor = when {
-                                !uiState.isActive -> Color(0xFFD32F2F)   // Rojo
-                                uiState.isPaused -> Color(0xFFFF9800)    // Naranja
-                                else -> Color(0xFF4CAF50)                // Verde
+                                !uiState.isActive -> Color(0xFFD32F2F)
+                                uiState.isPaused -> Color(0xFFFF9800)
+                                else -> Color(0xFF4CAF50)
                             }
                             Text(
                                 text = estadoTexto,

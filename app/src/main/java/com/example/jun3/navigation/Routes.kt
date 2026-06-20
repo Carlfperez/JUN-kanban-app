@@ -7,5 +7,7 @@ sealed class Screen(val route: String) {
     object About : Screen("about")
     object VideoPlayer : Screen("video_player")  // RUTA DE VIDEO
 
-    object Focus : Screen("focus")  // ← NUEVA RUTA
+    object Focus : Screen("focus")
+
+    object Settings : Screen("settings")
 }

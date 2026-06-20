@@ -111,9 +111,10 @@ class FocusViewModel(
         if (!currentState.isActive || currentState.currentTask == null) return
 
         val taskTitle = currentState.currentTask!!.title
+        val delayMinutes = prefs.getNudgeDelay() //Leer preferencia
 
         val workRequest = OneTimeWorkRequestBuilder<FocusReminderWorker>()
-            .setInitialDelay(2, TimeUnit.MINUTES)
+            .setInitialDelay(delayMinutes.toLong(), TimeUnit.MINUTES) // Usar el valor
             .setConstraints(
                 Constraints.Builder()
                     .setRequiresBatteryNotLow(true)

@@ -14,7 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight  // ✅ IMPORTACIÓN AGREGADA
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +28,7 @@ import com.example.jun3.data.TaskStatus
 import com.example.jun3.navigation.Screen
 import com.example.jun3.screens.AboutScreen
 import com.example.jun3.screens.FocusScreen
+import com.example.jun3.screens.SettingsScreen
 import com.example.jun3.screens.VideoScreen
 import com.example.jun3.ui.theme.JUN3Theme
 import com.example.jun3.utils.PreferenceHelper
@@ -45,7 +46,6 @@ class MainActivity : ComponentActivity() {
             // La app se abrió desde la notificación
         }
         setContent {
-            // ✅ Usar LocalContext en lugar de applicationContext
             val context = LocalContext.current
             val prefs = remember { PreferenceHelper(context) }
             var todayFocusTime by remember { mutableStateOf("0s") }
@@ -73,6 +73,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 onNavigateToTasks = { navController.navigate(Screen.TaskList.route) },
                                 onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                                 todayFocusTime = todayFocusTime
                             )
                         }
@@ -108,6 +109,14 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.VideoPlayer.route) {
                             VideoScreen(
                                 onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        // ✅ NUEVA RUTA: Pantalla de Ajustes
+                        composable(Screen.Settings.route) {
+                            SettingsScreen(
+                                onBack = { navController.popBackStack() },
+                                navController = navController
                             )
                         }
 
@@ -151,12 +160,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ==================== PANTALLA DE INICIO ====================
+// ==================== PANTALLA DE INICIO (ACTUALIZADA CON BOTÓN AJUSTES) ====================
 
 @Composable
 fun HomeScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToSettings: () -> Unit,  // ← NUEVO PARÁMETRO
     todayFocusTime: String
 ) {
     Column(
@@ -185,7 +195,7 @@ fun HomeScreen(
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        // ⭐ Mostrar tiempo enfocado hoy
+        // Card: Tiempo enfocado hoy
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -208,19 +218,29 @@ fun HomeScreen(
                 Text(
                     text = todayFocusTime,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,  // ✅ AHORA FUNCIONA
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
         }
 
+        // Botones principales
         Button(
             onClick = onNavigateToTasks,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
         ) {
-            Text("Mis Tareas")
+            Text("📋 Mis Tareas")
+        }
+
+        OutlinedButton(
+            onClick = onNavigateToSettings,  // ← NUEVO BOTÓN
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text("⚙️ Ajustes")
         }
 
         OutlinedButton(
@@ -229,7 +249,7 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
         ) {
-            Text("Acerca de")
+            Text("ℹ️ Acerca de")
         }
     }
 }
@@ -555,6 +575,7 @@ fun PreviewHomeScreen() {
         HomeScreen(
             onNavigateToTasks = { },
             onNavigateToAbout = { },
+            onNavigateToSettings = { },
             todayFocusTime = "1h 23m"
         )
     }
